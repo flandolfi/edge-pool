@@ -1,6 +1,5 @@
 import torch
-from torch_geometric.typing import OptTensor, Tensor
-from torch_sparse import SparseTensor
+from torch_geometric.typing import OptTensor, Tensor, SparseTensor
 from torch_scatter import scatter_min
 
 from pool import utils

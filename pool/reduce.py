@@ -2,15 +2,13 @@ from typing import  Tuple, Union, Optional
 
 import torch
 from torch.nn import Module, Linear
-from torch_geometric.typing import Adj, Tensor, OptTensor
-from torch_sparse import SparseTensor
+from torch_geometric.typing import Adj, Tensor, OptTensor, SparseTensor
 from torch_scatter import scatter_softmax, scatter
 
 from pool import matching, utils
 
 
 @torch.no_grad()
-@torch.jit.script
 def cluster_matching(adj: SparseTensor, rank: OptTensor = None) -> Tuple[Tensor, Tensor]:
     n, device = adj.size(0), adj.device()
     row, col, val = adj.coo()
@@ -55,13 +53,16 @@ class EdgePooling(Module):
                 batch: OptTensor = None) -> Tuple[Tensor, Adj, OptTensor, OptTensor,
                                                   Union[SparseTensor, Tensor], Tensor, Tensor]:
         adj, n = edge_index, x.size(0)
+
+        if torch.is_tensor(edge_index):
+            adj = SparseTensor.from_edge_index(edge_index, edge_attr, (n, n))
+        else:
+            adj = edge_index
+
         row, col, val = adj.coo()
 
         if val is None:
             val = torch.ones_like(row, dtype=torch.float)
-        
-        if torch.is_tensor(edge_index):
-            adj = SparseTensor.from_edge_index(edge_index, edge_attr, (n, n))
 
         score = self.scorer(x)
 
