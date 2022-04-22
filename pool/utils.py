@@ -1,8 +1,8 @@
 import torch
-from torch_geometric.typing import Tensor, Adj, SparseTensor
+from torch_geometric.typing import Tensor, Union, SparseTensor
 
 
-def rank_edge_from_nodes(edge_index: Adj, rank: Tensor) -> Tensor:
+def rank_edge_from_nodes(edge_index: Union[SparseTensor, Tensor], rank: Tensor) -> Tensor:
     if isinstance(edge_index, SparseTensor):
         row, col, _ = edge_index.coo()
     else:
