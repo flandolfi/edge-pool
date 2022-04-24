@@ -1,7 +1,7 @@
 from typing import  Tuple, Union, Optional
 
 import torch
-from torch.nn import Module, Linear
+from torch.nn import Module, Linear, functional
 from torch_geometric.typing import Adj, Tensor, OptTensor, SparseTensor
 from torch_scatter import scatter_softmax, scatter
 
@@ -85,7 +85,7 @@ class EdgePooling(Module):
             score = self.scorer(x)
 
             if self.score_activation not in {None, 'softmax', 'linear'}:
-                score_act = getattr(torch, self.score_activation)
+                score_act = getattr(functional, self.score_activation)
                 score = score_act(score)
         else:
             score_row = self.scorer(torch.cat([x[row], x[col]], dim=-1))
@@ -95,7 +95,7 @@ class EdgePooling(Module):
                 score_row = scatter_softmax(score_row, row, dim=0)
                 score_col = scatter_softmax(score_col, col, dim=0)
             elif self.score_activation not in {None, 'linear'}:
-                score_act = getattr(torch, self.score_activation)
+                score_act = getattr(functional, self.score_activation)
                 score_row = score_act(score_row)
                 score_col = score_act(score_col)
 
@@ -110,10 +110,10 @@ class EdgePooling(Module):
         
         if self.score_passthrough:                
             if self.score_nodes:
-                norm = scatter(score*score, cluster, dim=0, dim_size=c, reduce='sum')
+                norm = scatter(score*score, cluster, dim=0, dim_size=c, reduce='sum').sqrt()
                 norm_score = score/norm[cluster]
                 x = scatter(x*norm_score, cluster, dim=0, dim_size=c, reduce=self.reduce_x)
-                val = score[row, 0]*val*score[col, 0]
+                val = norm_score[row, 0]*val*norm_score[col, 0]
             else:
                 x = scatter(x, cluster, dim=0, dim_size=c, reduce=self.reduce_x)
                 matched_cluster = cluster[row[match]]
