@@ -232,11 +232,15 @@ class EdgePool(Baseline):
         super(EdgePool, self).__init__(dataset=dataset, **kwargs)
 
 
+class EdgePoolSoftmax(EdgePool):
+    def __init__(self, dataset: InMemoryDataset, **kwargs):
+        super(EdgePoolSoftmax, self).__init__(dataset=dataset, score_activation='softmax', **kwargs)
+
+
 class EdgePoolV2(EdgePool):
     def __init__(self, dataset: InMemoryDataset, **kwargs):
         super(EdgePoolV2, self).__init__(dataset=dataset, score_nodes=True,
-                                         score_activation='sigmoid',
-                                         score_descending=False, **kwargs)
+                                         score_activation='sigmoid', **kwargs)
 
 
 class EdgePoolV2Random(EdgePoolV2):
