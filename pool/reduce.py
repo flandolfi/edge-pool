@@ -26,16 +26,21 @@ class EdgePooling(Module):
                  score: Optional[str] = 'linear',
                  score_nodes: bool = True,
                  score_activation: Optional[str] = 'sigmoid',
+                 score_passthrough: Union[bool, str] = 'infer',
                  score_descending: bool = True,
                  reduce_x: str = 'sum',
                  reduce_edge: str = 'sum',
                  remove_self_loops: bool = True):
         super(EdgePooling, self).__init__()
 
+        if score_passthrough == 'infer':
+            score_passthrough = score != 'random'
+
         self.score = score
         self.score_nodes = score_nodes
         self.score_activation = score_activation
         self.score_descending = score_descending
+        self.score_passthrough = score_passthrough
         self.reduce_x = reduce_x
         self.reduce_edge = reduce_edge
         self.remove_self_loops = remove_self_loops
@@ -82,13 +87,20 @@ class EdgePooling(Module):
                 score_act = getattr(torch, self.score_activation)
                 score = score_act(score)
 
-            if self.score != 'linear':
+            if self.score_passthrough:
                 x = score*x
         else:
             score = score[row] + score[col]
 
             if self.score_activation == 'softmax':
-                score = scatter_softmax(score, col, dim=0)
+                score_col = scatter_softmax(score, col, dim=0)
+                score_row = scatter_softmax(score, row, dim=0)
+
+                if self.score_descending:
+                    score = torch.maximum(score_col, score_row)
+                else:
+                    score = torch.minimum(score_col, score_row)
+
             elif self.score_activation not in {None, 'linear'}:
                 score_act = getattr(torch, self.score_activation)
                 score = score_act(score)
@@ -100,7 +112,7 @@ class EdgePooling(Module):
 
         x = scatter(x, cluster, dim=0, dim_size=c, reduce=self.reduce_x)
         
-        if self.score == 'linear':
+        if self.score_passthrough:
             if self.score_nodes:
                 x = x/scatter(score, cluster, dim=0, dim_size=c, reduce=self.reduce_x)
             else:
