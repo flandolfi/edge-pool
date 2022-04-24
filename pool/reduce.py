@@ -26,7 +26,7 @@ class EdgePooling(Module):
                  score: Optional[str] = 'linear',
                  score_nodes: bool = True,
                  score_activation: Optional[str] = 'sigmoid',
-                 score_descending: bool = False,
+                 score_descending: bool = True,
                  reduce_x: str = 'sum',
                  reduce_edge: str = 'sum',
                  remove_self_loops: bool = True):
@@ -43,11 +43,22 @@ class EdgePooling(Module):
         if score == 'linear':
             self.scorer = Linear(in_channels, 1)
         elif score == 'random':
-            self.scorer = lambda x: torch.rand(x.size(0), dtype=x.dtype, device=x.device)
+            self.scorer = lambda x: torch.rand((x.size(0), 1), dtype=x.dtype, device=x.device)
         elif score is None:
-            self.scorer = lambda x: torch.arange(x.size(0), dtype=x.dtype, device=x.device)
+            self.scorer = lambda x: torch.arange((x.size(0), 1), dtype=x.dtype, device=x.device)
         else:
-            self.scorer = getattr(torch, score)
+            scoring_fun = getattr(torch, score)
+
+            def scorer(x: Tensor):
+                x = scoring_fun(x, dim=-1, keepdim=True)
+                
+                if isinstance(x, tuple):
+                    x = x[0]
+                
+                return x.view(-1, 1)
+            
+
+            self.scorer = scorer
 
     def forward(self, x: Tensor, edge_index: Adj, edge_attr: OptTensor = None,
                 batch: OptTensor = None) -> Tuple[Tensor, Adj, OptTensor, OptTensor,
@@ -77,7 +88,7 @@ class EdgePooling(Module):
             score = score[row] + score[col]
 
             if self.score_activation == 'softmax':
-                score = scatter_softmax(score, col)
+                score = scatter_softmax(score, col, dim=0)
             elif self.score_activation not in {None, 'linear'}:
                 score_act = getattr(torch, self.score_activation)
                 score = score_act(score)
@@ -88,10 +99,13 @@ class EdgePooling(Module):
         c = cluster.max() + 1
 
         x = scatter(x, cluster, dim=0, dim_size=c, reduce=self.reduce_x)
-
-        if not self.score_nodes:
-            matched_cluster = cluster[row[match]]
-            x[matched_cluster] = x[matched_cluster]*score[match]
+        
+        if self.score == 'linear':
+            if self.score_nodes:
+                x = x/scatter(score, cluster, dim=0, dim_size=c, reduce=self.reduce_x)
+            else:
+                matched_cluster = cluster[row[match]]
+                x[matched_cluster] = x[matched_cluster]*score[match]
 
         adj = SparseTensor(row=cluster[row], col=cluster[col],
                            value=val, is_sorted=False,
