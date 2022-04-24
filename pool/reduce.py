@@ -30,7 +30,7 @@ class EdgePooling(Module):
                  score_descending: bool = True,
                  reduce_x: str = 'sum',
                  reduce_edge: str = 'sum',
-                 remove_self_loops: bool = True):
+                 remove_self_loops: bool = False):
         super(EdgePooling, self).__init__()
 
         if score_passthrough == 'infer':
@@ -46,7 +46,7 @@ class EdgePooling(Module):
         self.remove_self_loops = remove_self_loops
 
         if score == 'linear':
-            self.scorer = Linear(in_channels, 1)
+            self.scorer = Linear(in_channels + int(not score_nodes)*in_channels, 1)
         elif score == 'random':
             self.scorer = lambda x: torch.rand((x.size(0), 1), dtype=x.dtype, device=x.device)
         elif score is None:
@@ -80,42 +80,40 @@ class EdgePooling(Module):
         if val is None:
             val = torch.ones_like(row, dtype=torch.float)
 
-        score = self.scorer(x)
-
         if self.score_nodes:
-            if self.score_activation not in {None, 'linear', 'softmax'}:
+            score = self.scorer(x)
+
+            if self.score_activation not in {None, 'softmax', 'linear'}:
                 score_act = getattr(torch, self.score_activation)
                 score = score_act(score)
-
-            if self.score_passthrough:
-                x = score*x
         else:
-            score = score[row] + score[col]
+            score_row = self.scorer(torch.cat([x[row], x[col]], dim=-1))
+            score_col = self.scorer(torch.cat([x[col], x[row]], dim=-1))
 
             if self.score_activation == 'softmax':
-                score_col = scatter_softmax(score, col, dim=0)
-                score_row = scatter_softmax(score, row, dim=0)
-
-                if self.score_descending:
-                    score = torch.maximum(score_col, score_row)
-                else:
-                    score = torch.minimum(score_col, score_row)
-
+                score_row = scatter_softmax(score_row, row, dim=0)
+                score_col = scatter_softmax(score_col, col, dim=0)
             elif self.score_activation not in {None, 'linear'}:
                 score_act = getattr(torch, self.score_activation)
-                score = score_act(score)
+                score_row = score_act(score_row)
+                score_col = score_act(score_col)
+
+            if self.score_descending:
+                score = torch.maximum(score_col, score_row)
+            else:
+                score = torch.minimum(score_col, score_row)
 
         rank = utils.get_ranking(score, descending=self.score_descending)
         cluster, match = cluster_matching(adj, rank)
-
         c = cluster.max() + 1
-
-        x = scatter(x, cluster, dim=0, dim_size=c, reduce=self.reduce_x)
         
-        if self.score_passthrough:
+        if self.score_passthrough:                
             if self.score_nodes:
-                x = x/scatter(score, cluster, dim=0, dim_size=c, reduce=self.reduce_x)
+                norm_score = score/scatter(score*score, cluster, dim=0, dim_size=c, reduce=self.reduce_x).sqrt()
+                x = scatter(x*norm_score, cluster, dim=0, dim_size=c, reduce=self.reduce_x)
+                val = norm_score[row, 0]*val*norm_score[col, 0]
             else:
+                x = scatter(x, cluster, dim=0, dim_size=c, reduce=self.reduce_x)
                 matched_cluster = cluster[row[match]]
                 x[matched_cluster] = x[matched_cluster]*score[match]
 
