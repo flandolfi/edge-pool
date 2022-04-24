@@ -218,6 +218,7 @@ class EdgePool(Baseline):
                  score_nodes: bool = False,
                  score_activation: str = 'tanh',
                  score_descending: bool = True,
+                 score_passthrough: bool = True,
                  reduce: str = 'sum',
                  remove_self_loops: bool = True,
                  **kwargs):
@@ -227,7 +228,9 @@ class EdgePool(Baseline):
             'score_nodes': score_nodes,
             'score_activation': score_activation,
             'score_descending': score_descending,
+            'score_passthrough': score_passthrough,
             'reduce_x': reduce,
+            'remove_self_loops': remove_self_loops,
             'remove_self_loops': remove_self_loops,
         }
         
@@ -250,8 +253,12 @@ class EdgePoolV2(EdgePool):
 
 class EdgePoolV2Random(EdgePoolV2):
     def __init__(self, dataset: InMemoryDataset, **kwargs):
-        super(EdgePoolV2Random, self).__init__(dataset=dataset, score='random', 
-                                               reduce='mean', **kwargs)
+        super(EdgePoolV2Random, self).__init__(dataset=dataset, score='random', **kwargs)
+
+
+class EdgePoolV2Normal(EdgePoolV2):
+    def __init__(self, dataset: InMemoryDataset, **kwargs):
+        super(EdgePoolV2Normal, self).__init__(dataset=dataset, score='normal', **kwargs)
 
 
 class EdgePoolV2Norm(EdgePoolV2):

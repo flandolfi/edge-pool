@@ -34,7 +34,7 @@ class EdgePooling(Module):
         super(EdgePooling, self).__init__()
 
         if score_passthrough == 'infer':
-            score_passthrough = score != 'random'
+            score_passthrough = score not in {'random', 'uniform', 'normal'}
 
         self.score = score
         self.score_nodes = score_nodes
@@ -47,8 +47,10 @@ class EdgePooling(Module):
 
         if score == 'linear':
             self.scorer = Linear(in_channels + int(not score_nodes)*in_channels, 1)
-        elif score == 'random':
+        elif score in {'random', 'uniform'}:
             self.scorer = lambda x: torch.rand((x.size(0), 1), dtype=x.dtype, device=x.device)
+        elif score == 'normal':
+            self.scorer = lambda x: torch.randn((x.size(0), 1), dtype=x.dtype, device=x.device)
         elif score is None:
             self.scorer = lambda x: torch.arange((x.size(0), 1), dtype=x.dtype, device=x.device)
         else:
@@ -62,7 +64,6 @@ class EdgePooling(Module):
                 
                 return x.view(-1, 1)
             
-
             self.scorer = scorer
 
     def forward(self, x: Tensor, edge_index: Adj, edge_attr: OptTensor = None,
