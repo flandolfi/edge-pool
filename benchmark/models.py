@@ -248,6 +248,7 @@ class EdgePoolV2(EdgePool):
     def __init__(self, dataset: InMemoryDataset, **kwargs):
         super(EdgePoolV2, self).__init__(dataset=dataset, score_nodes=True,
                                          score_activation='sigmoid', 
+                                         score_descending=False,
                                          remove_self_loops=False, **kwargs)
 
 

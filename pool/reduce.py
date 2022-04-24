@@ -27,7 +27,7 @@ class EdgePooling(Module):
                  score_nodes: bool = True,
                  score_activation: Optional[str] = 'sigmoid',
                  score_passthrough: Union[bool, str] = 'infer',
-                 score_descending: bool = True,
+                 score_descending: bool = False,
                  reduce_x: str = 'sum',
                  reduce_edge: str = 'sum',
                  remove_self_loops: bool = False):
@@ -110,9 +110,10 @@ class EdgePooling(Module):
         
         if self.score_passthrough:                
             if self.score_nodes:
-                norm_score = score/scatter(score*score, cluster, dim=0, dim_size=c, reduce=self.reduce_x).sqrt()
+                norm = scatter(score*score, cluster, dim=0, dim_size=c, reduce='sum')
+                norm_score = score/norm[cluster]
                 x = scatter(x*norm_score, cluster, dim=0, dim_size=c, reduce=self.reduce_x)
-                val = norm_score[row, 0]*val*norm_score[col, 0]
+                val = score[row, 0]*val*score[col, 0]
             else:
                 x = scatter(x, cluster, dim=0, dim_size=c, reduce=self.reduce_x)
                 matched_cluster = cluster[row[match]]
