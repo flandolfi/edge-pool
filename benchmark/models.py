@@ -231,7 +231,6 @@ class EdgePool(Baseline):
             'score_passthrough': score_passthrough,
             'reduce_x': reduce,
             'remove_self_loops': remove_self_loops,
-            'remove_self_loops': remove_self_loops,
         }
         
         kwargs['pool_signature'] = self.known_signatures['EdgePooling']
@@ -245,16 +244,17 @@ class EdgePoolSoftmax(EdgePool):
 
 
 class EdgePoolV2(EdgePool):
-    def __init__(self, dataset: InMemoryDataset, **kwargs):
+    def __init__(self, dataset: InMemoryDataset, score_activation='sigmoid', **kwargs):
         super(EdgePoolV2, self).__init__(dataset=dataset, score_nodes=True,
-                                         score_activation='sigmoid', 
+                                         score_activation=score_activation,
                                          score_descending=False,
                                          remove_self_loops=False, **kwargs)
 
 
 class EdgePoolV2Random(EdgePoolV2):
     def __init__(self, dataset: InMemoryDataset, **kwargs):
-        super(EdgePoolV2Random, self).__init__(dataset=dataset, score='random', **kwargs)
+        super(EdgePoolV2Random, self).__init__(dataset=dataset, score='random',
+                                               score_activation='linear', **kwargs)
 
 
 class EdgePoolV2Normal(EdgePoolV2):
