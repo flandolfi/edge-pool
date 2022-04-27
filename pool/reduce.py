@@ -26,23 +26,20 @@ class EdgePooling(Module):
                  score: Optional[str] = 'linear',
                  score_nodes: bool = True,
                  score_activation: Optional[str] = 'sigmoid',
-                 score_passthrough: Union[bool, str] = 'infer',
                  score_descending: bool = False,
                  reduce_x: str = 'sum',
                  reduce_edge: str = 'sum',
+                 reduce_with_pseudoinverse: bool = True,
                  remove_self_loops: bool = False):
         super(EdgePooling, self).__init__()
-
-        if score_passthrough == 'infer':
-            score_passthrough = score not in {'random', 'uniform', 'normal'}
 
         self.score = score
         self.score_nodes = score_nodes
         self.score_activation = score_activation
         self.score_descending = score_descending
-        self.score_passthrough = score_passthrough
         self.reduce_x = reduce_x
         self.reduce_edge = reduce_edge
+        self.reduce_with_pseudoinverse = reduce_with_pseudoinverse
         self.remove_self_loops = remove_self_loops
 
         if score == 'linear':
@@ -107,17 +104,18 @@ class EdgePooling(Module):
         rank = utils.get_ranking(score, descending=self.score_descending)
         cluster, match = cluster_matching(adj, rank)
         c = cluster.max() + 1
-        
-        if self.score_passthrough:                
-            if self.score_nodes:
+            
+        if self.score_nodes:
+            x = scatter(x*score, cluster, dim=0, dim_size=c, reduce=self.reduce_x)
+
+            if self.reduce_with_pseudoinverse:
                 norm = scatter(score*score, cluster, dim=0, dim_size=c, reduce='sum')
                 norm_score = score/norm[cluster]
-                x = scatter(x*score, cluster, dim=0, dim_size=c, reduce=self.reduce_x)
                 val = norm_score[row, 0]*val*norm_score[col, 0]
-            else:
-                x = scatter(x, cluster, dim=0, dim_size=c, reduce=self.reduce_x)
-                matched_cluster = cluster[row[match]]
-                x[matched_cluster] = x[matched_cluster]*score[match]
+        else:
+            x = scatter(x, cluster, dim=0, dim_size=c, reduce=self.reduce_x)
+            matched_cluster = cluster[row[match]]
+            x[matched_cluster] = x[matched_cluster]*score[match]
 
         adj = SparseTensor(row=cluster[row], col=cluster[col],
                            value=val, is_sorted=False,

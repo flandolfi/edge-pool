@@ -218,8 +218,8 @@ class EdgePool(Baseline):
                  score_nodes: bool = False,
                  score_activation: str = 'tanh',
                  score_descending: bool = True,
-                 score_passthrough: bool = True,
                  reduce: str = 'sum',
+                 reduce_with_pseudoinverse: bool = False,
                  remove_self_loops: bool = True,
                  **kwargs):
         kwargs['pool_class'] = EdgePooling
@@ -228,8 +228,8 @@ class EdgePool(Baseline):
             'score_nodes': score_nodes,
             'score_activation': score_activation,
             'score_descending': score_descending,
-            'score_passthrough': score_passthrough,
             'reduce_x': reduce,
+            'reduce_with_pseudoinverse': reduce_with_pseudoinverse,
             'remove_self_loops': remove_self_loops,
         }
         
@@ -248,6 +248,7 @@ class EdgePoolV2(EdgePool):
         super(EdgePoolV2, self).__init__(dataset=dataset, score_nodes=True,
                                          score_activation=score_activation,
                                          score_descending=False,
+                                         reduce_with_pseudoinverse=True,
                                          remove_self_loops=False, **kwargs)
 
 
