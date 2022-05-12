@@ -25,6 +25,7 @@ class EdgePooling(Module):
     def __init__(self, in_channels: Optional[int] = None,
                  score: Optional[str] = 'linear',
                  score_nodes: bool = True,
+                 score_bias: bool = False,
                  score_activation: Optional[str] = 'sigmoid',
                  score_descending: bool = False,
                  reduce_x: str = 'sum',
@@ -43,7 +44,7 @@ class EdgePooling(Module):
         self.remove_self_loops = remove_self_loops
 
         if score == 'linear':
-            self.scorer = Linear(in_channels + int(not score_nodes)*in_channels, 1)
+            self.scorer = Linear(in_channels + int(not score_nodes)*in_channels, 1, bias=score_bias)
         elif score in {'random', 'uniform'}:
             self.scorer = lambda x: torch.rand((x.size(0), 1), dtype=x.dtype, device=x.device)
         elif score == 'normal':

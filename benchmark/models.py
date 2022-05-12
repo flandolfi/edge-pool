@@ -216,6 +216,7 @@ class EdgePool(Baseline):
     def __init__(self, dataset: InMemoryDataset,
                  score: str = 'linear',
                  score_nodes: bool = False,
+                 score_bias: bool = True,
                  score_activation: str = 'tanh',
                  score_descending: bool = True,
                  reduce: str = 'sum',
@@ -226,6 +227,7 @@ class EdgePool(Baseline):
         kwargs['pool_kwargs'] = {
             'score': score,
             'score_nodes': score_nodes,
+            'score_bias': score_bias,
             'score_activation': score_activation,
             'score_descending': score_descending,
             'reduce_x': reduce,
@@ -246,6 +248,7 @@ class EdgePoolSoftmax(EdgePool):
 class EdgePoolV2(EdgePool):
     def __init__(self, dataset: InMemoryDataset, score_activation='sigmoid', **kwargs):
         super(EdgePoolV2, self).__init__(dataset=dataset, score_nodes=True,
+                                         score_bias=False,
                                          score_activation=score_activation,
                                          score_descending=False,
                                          reduce_with_pseudoinverse=True,
